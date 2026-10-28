@@ -1,6 +1,6 @@
 {
   "name": "@daveinchy/icons",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Scalable, customizable SVG icons library for React and TypeScript",
   "author": "DaveInchy <danny09vand@gmail.com>",
   "license": "MIT",
