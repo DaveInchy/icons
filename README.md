@@ -60,22 +60,5 @@ All icon components accept the following props:
 | `strokeWidth` | `number` | `1.5` | SVG stroke width |
 | `fillColor` | `string` | `"none"` | SVG fill color |
 
-## Publishing to NPM
-
-To publish this package to npm under `@daveinchy/icons`:
-
-```bash
-# 1. Login to npm (if not already logged in)
-npm login
-
-# 2. Build the package
-npm run build
-
-# 3. Publish to npm with public access
-npm publish --access public
-```
-
 ## License
-
 MIT © [DaveInchy](https://github.com/DaveInchy)
-# icons
