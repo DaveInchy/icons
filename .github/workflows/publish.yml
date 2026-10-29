@@ -1,21 +1,84 @@
 name: Publish to NPM
 
 on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      force_publish:
+        description: 'Force publish even if version check fails'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: 'https://registry.npmjs.org'
-      - run: npm install
-      - run: npm run build
-      - run: npm publish --access public
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Check version against NPM registry
+        id: check_version
+        shell: bash
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          
+          echo "Package: $PACKAGE_NAME"
+          echo "Current Version: $CURRENT_VERSION"
+          
+          # Fetch latest published version on npm
+          PUBLISHED_VERSION=$(npm view "$PACKAGE_NAME" version 2>/dev/null || echo "none")
+          echo "Published Version: $PUBLISHED_VERSION"
+          
+          if [ "$CURRENT_VERSION" = "$PUBLISHED_VERSION" ] && [ "${{ github.event.inputs.force_publish }}" != "true" ]; then
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+            echo "Version $CURRENT_VERSION is already published on npm. Skipping publish step."
+          else
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "New version $CURRENT_VERSION detected. Ready to publish."
+          fi
+
+      - name: Publish to NPM
+        if: steps.check_version.outputs.should_publish == 'true'
+        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create Git Tag if missing
+        if: steps.check_version.outputs.should_publish == 'true' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          TAG_NAME="v$CURRENT_VERSION"
+          
+          if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+            git push origin "$TAG_NAME"
+          fi
