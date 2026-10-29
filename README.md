@@ -78,3 +78,4 @@ npm publish --access public
 ## License
 
 MIT © [DaveInchy](https://github.com/DaveInchy)
+# icons
